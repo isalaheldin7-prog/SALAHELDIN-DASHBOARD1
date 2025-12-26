@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم التداول - نسخة محسنة</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    direction: rtl;
+    background-color: #f0f2f5;
+  }
+  header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.4em;
+  }
+  .menu-btn {
+    font-size: 1.5em;
+    cursor: pointer;
+  }
+  nav {
+    background-color: #34495e;
+    display: none;
+    flex-direction: column;
+  }
+  nav a {
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+  }
+  nav a:hover {
+    background-color: #3d566e;
+  }
+  .container {
+    padding: 15px;
+  }
+  .section {
+    margin-bottom: 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    background-color: white;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  table, th, td {
+    border: 1px solid #ccc;
+  }
+  th, td {
+    padding: 8px;
+    text-align: center;
+    font-size: 0.95em;
+  }
+  input[type="text"], input[type="number"], input[type="date"] {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+    margin-bottom: 5px;
+  }
+  button {
+    padding: 8px 12px;
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 5px;
+  }
+  button:hover {
+    background-color: #3d566e;
+  }
+  canvas {
+    background-color: white;
+    border: 1px solid #ccc;
+    width: 100%;
+    max-width: 100%;
+    height: 300px;
+    border-radius: 5px;
+  }
+  .summary {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  .card {
+    background-color: #ffffff;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    flex: 1 1 45%;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  .card h3 {
+    margin: 0 0 5px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>لوحة تحكم التداول</h1>
+  <span class="menu-btn" onclick="toggleMenu()">☰</span>
+</header>
+
+<nav id="menu">
+  <a href="#" onclick="showSection('dashboard')">الرئيسية</a>
+  <a href="#" onclick="showSection('addTrade')">إضافة صفقة</a>
+  <a href="#" onclick="showSection('stats')">الإحصائيات</a>
+</nav>
+
+<div class="container">
+
+  <div id="dashboard" class="section">
+    <h2>الصفقات المسجلة</h2>
+    <table id="tradesTable">
+      <thead>
+        <tr>
+          <th>الاسم</th>
+          <th>الرصيد</th>
+          <th>الربح/الخسارة</th>
+          <th>التاريخ</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="addTrade" class="section" style="display:none;">
+    <h2>إضافة صفقة جديدة</h2>
+    <input type="text" id="tradeName" placeholder="اسم الصفقة">
+    <input type="number" id="tradeBalance" placeholder="الرصيد">
+    <input type="number" id="tradeProfit" placeholder="الربح/الخسارة">
+    <input type="date" id="tradeDate" placeholder="تاريخ الصفقة">
+    <button onclick="addTrade()">إضافة</button>
+  </div>
+
+  <div id="stats" class="section" style="display:none;">
+    <h2>الإحصائيات</h2>
+    <div class="summary">
+      <div class="card">
+        <h3>إجمالي الربح/الخسارة</h3>
+        <p id="totalProfit">0</p>
+      </div>
+      <div class="card">
+        <h3>عدد الصفقات</h3>
+        <p id="totalTrades">0</p>
+      </div>
+    </div>
+    <canvas id="profitChart"></canvas>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function toggleMenu() {
+  const menu = document.getElementById('menu');
+  menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function showSection(section) {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('addTrade').style.display = 'none';
+  document.getElementById('stats').style.display = 'none';
+  document.getElementById(section).style.display = 'block';
+}
+
+let trades = JSON.parse(localStorage.getItem('trades') || '[]');
+
+function renderTable() {
+  const tbody = document.querySelector('#tradesTable tbody');
+  tbody.innerHTML = '';
+  trades.forEach(trade => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${trade.name}</td><td>${trade.balance}</td><td>${trade.profit}</td><td>${trade.date}</td>`;
+    tbody.appendChild(row);
+  });
+  renderStats();
+  renderChart();
+}
+
+function addTrade() {
+  const name = document.getElementById('tradeName').value;
+  const balance = parseFloat(document.getElementById('tradeBalance').value);
+  const profit = parseFloat(document.getElementById('tradeProfit').value);
+  const date = document.getElementById('tradeDate').value;
+
+  if(name && !isNaN(balance) && !isNaN(profit) && date) {
+    trades.push({name, balance, profit, date});
+    localStorage.setItem('trades', JSON.stringify(trades));
+    document.getElementById('tradeName').value = '';
+    document.getElementById('tradeBalance').value = '';
+    document.getElementById('tradeProfit').value = '';
+    document.getElementById('tradeDate').value = '';
+    renderTable();
+    alert('تمت إضافة الصفقة!');
+  } else {
+    alert('يرجى ملء جميع الحقول بشكل صحيح.');
+  }
+}
+
+function renderStats() {
+  const totalProfit = trades.reduce((sum, t) => sum + t.profit, 0);
+  document.getElementById('totalProfit').innerText = totalProfit;
+  document.getElementById('totalTrades').innerText = trades.length;
+}
+
+let chart;
+function renderChart() {
+  const ctx = document.getElementById('profitChart').getContext('2d');
+  const labels = trades.map(t => t.date);
+  const data = trades.map(t => t.profit);
+
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'الربح/الخسارة حسب التاريخ',
+        data: data,
+        backgroundColor: 'rgba(52, 152, 219, 0.6)',
+        borderColor: 'rgba(41, 128, 185, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+renderTable();
+</script>
+
+</body>
+</html>
